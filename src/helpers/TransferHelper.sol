@@ -7,7 +7,7 @@ import "./TransferErrors.sol";
 
 contract TransferHelper {
 
-    function _performERC20Transfer(
+    function _erc20Transfer(
         address token,
         address from,
         address to,

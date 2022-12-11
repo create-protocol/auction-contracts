@@ -34,10 +34,12 @@ contract NFTAuction is TransferHelper {
     /*
      * Default values that are used if not specified by the NFT seller.
      */
-    uint32 public defaultBidIncreasePercentage;
-    uint32 public minimumSettableIncreasePercentage;
-    uint32 public maximumMinPricePercentage;
-    uint32 public defaultAuctionBidPeriod;
+    uint32 constant defaultBidIncreasePercentage = 100;
+    uint32 constant minimumSettableIncreasePercentage = 86400;
+    uint32 constant maximumMinPricePercentage = 100;
+    uint32 constant defaultAuctionBidPeriod = 8000;
+
+
 
     /*╔═════════════════════════════╗
       ║           EVENTS            ║
@@ -325,12 +327,7 @@ contract NFTAuction is TransferHelper {
       ╚═════════════════════════════╝*/
     /**********************************/
     // constructor
-    constructor() {
-        defaultBidIncreasePercentage = 100;
-        defaultAuctionBidPeriod = 86400; //1 day
-        minimumSettableIncreasePercentage = 100;
-        maximumMinPricePercentage = 8000;
-    }
+    constructor() {}
 
     /*╔══════════════════════════════╗
       ║    AUCTION CHECK FUNCTIONS   ║
@@ -603,7 +600,8 @@ contract NFTAuction is TransferHelper {
         address _nftSeller = nftContractAuctions[_nftContractAddress][_tokenId]
             .nftSeller;
         if (IERC721(_nftContractAddress).ownerOf(_tokenId) == _nftSeller) {
-            IERC721(_nftContractAddress).transferFrom(
+            _erc721Transfer(
+                _nftContractAddress,
                 _nftSeller,
                 address(this),
                 _tokenId
@@ -1067,15 +1065,10 @@ contract NFTAuction is TransferHelper {
         uint256 _tokenId,
         uint128 _tokenAmount
     ) internal {
-        address auctionERC20Token = nftContractAuctions[_nftContractAddress][
-            _tokenId
-        ].ERC20Token;
+        address auctionERC20Token = nftContractAuctions[_nftContractAddress][_tokenId].ERC20Token;
+
         if (_isERC20Auction(auctionERC20Token)) {
-            IERC20(auctionERC20Token).transferFrom(
-                msg.sender,
-                address(this),
-                _tokenAmount
-            );
+            _erc20Transfer(auctionERC20Token, msg.sender, address(this), _tokenAmount);
             nftContractAuctions[_nftContractAddress][_tokenId]
                 .nftHighestBid = _tokenAmount;
         } else {
@@ -1140,15 +1133,10 @@ contract NFTAuction is TransferHelper {
         address _nftContractAddress,
         uint256 _tokenId
     ) internal {
-        address _nftSeller = nftContractAuctions[_nftContractAddress][_tokenId]
-            .nftSeller;
-        address _nftHighestBidder = nftContractAuctions[_nftContractAddress][
-            _tokenId
-        ].nftHighestBidder;
+        address _nftSeller = nftContractAuctions[_nftContractAddress][_tokenId].nftSeller;
+        address _nftHighestBidder = nftContractAuctions[_nftContractAddress][ _tokenId].nftHighestBidder;
         address _nftRecipient = _getNftRecipient(_nftContractAddress, _tokenId);
-        uint128 _nftHighestBid = nftContractAuctions[_nftContractAddress][
-            _tokenId
-        ].nftHighestBid;
+        uint128 _nftHighestBid = nftContractAuctions[_nftContractAddress][_tokenId].nftHighestBid;
         _resetBids(_nftContractAddress, _tokenId);
 
         _payFeesAndSeller(
@@ -1157,13 +1145,11 @@ contract NFTAuction is TransferHelper {
             _nftSeller,
             _nftHighestBid
         );
-        IERC721(_nftContractAddress).transferFrom(
-            address(this),
-            _nftRecipient,
-            _tokenId
-        );
+
+        _erc721Transfer(_nftContractAddress, address(this), _nftRecipient, _tokenId);
 
         _resetAuction(_nftContractAddress, _tokenId);
+
         emit NFTTransferredAndSellerPaid(
             _nftContractAddress,
             _tokenId,
@@ -1221,7 +1207,9 @@ contract NFTAuction is TransferHelper {
             _tokenId
         ].ERC20Token;
         if (_isERC20Auction(auctionERC20Token)) {
-            IERC20(auctionERC20Token).transfer(_recipient, _amount);
+
+            _erc20Transfer(auctionERC20Token, address(this), _recipient, _amount);
+            
         } else {
             // attempt to send the funds to the recipient
             (bool success, ) = payable(_recipient).call{
